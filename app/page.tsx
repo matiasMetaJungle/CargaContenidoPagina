@@ -13,16 +13,21 @@ const FOLDER = "global";
 
 export default function Page() {
   const [images, setImages] = useState<ImageItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     fetchImages();
   }, []);
 
+  // 🔹 LISTAR IMÁGENES
   const fetchImages = async () => {
     const { data, error } = await supabase.storage
       .from(BUCKET)
-      .list(FOLDER, { limit: 100, sortBy: { column: "created_at", order: "desc" } });
+      .list(FOLDER, {
+        limit: 100,
+        sortBy: { column: "created_at", order: "desc" },
+      });
 
     if (error) {
       console.error(error);
@@ -39,8 +44,31 @@ export default function Page() {
     setImages(mapped);
   };
 
+  // 🔹 SUBIR IMAGEN
+  const uploadImage = async (file: File) => {
+    setUploading(true);
+
+    const fileName = `${Date.now()}_${file.name}`;
+
+    const { error } = await supabase.storage
+      .from(BUCKET)
+      .upload(`${FOLDER}/${fileName}`, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      console.error(error);
+      alert("Error subiendo imagen");
+    }
+
+    setUploading(false);
+    fetchImages();
+  };
+
+  // 🔹 MOSTRAR EN UNITY
   const showInUnity = async (url: string) => {
-    setLoading(true);
+    setSending(true);
 
     const { error } = await supabase
       .from("meeting_state")
@@ -49,12 +77,13 @@ export default function Page() {
 
     if (error) {
       console.error(error);
-      alert("Error actualizando la imagen");
+      alert("Error enviando a Unity");
     }
 
-    setLoading(false);
+    setSending(false);
   };
 
+  // 🔹 BORRAR IMAGEN
   const deleteImage = async (name: string) => {
     const confirmDelete = confirm("¿Seguro que quieres borrar esta imagen?");
     if (!confirmDelete) return;
@@ -73,12 +102,40 @@ export default function Page() {
   };
 
   return (
-    <main style={{ padding: 24 }}>
+    <main style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>
       <h1 style={{ fontSize: 28, marginBottom: 16 }}>
-        Panel de Imágenes – Reunión
+        Panel de Contenido – Reunión
       </h1>
 
-      {loading && <p>Enviando imagen a Unity...</p>}
+      {/* 🔼 SUBIR IMAGEN */}
+      <div
+        style={{
+          border: "1px solid #ddd",
+          borderRadius: 8,
+          padding: 16,
+          marginBottom: 24,
+        }}
+      >
+        <h2 style={{ marginBottom: 8 }}>Subir imagen</h2>
+
+        <input
+          type="file"
+          accept="image/*"
+          disabled={uploading}
+          onChange={(e) => {
+            if (e.target.files && e.target.files[0]) {
+              uploadImage(e.target.files[0]);
+            }
+          }}
+        />
+
+        {uploading && <p>Subiendo imagen...</p>}
+      </div>
+
+      {/* 🖼️ GALERÍA */}
+      <h2 style={{ marginBottom: 12 }}>Imágenes disponibles</h2>
+
+      {sending && <p>Enviando imagen a Unity...</p>}
 
       <div
         style={{
