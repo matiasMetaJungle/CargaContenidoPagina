@@ -66,18 +66,23 @@ export default function Page() {
     fetchImages();
   };
 
-  // 🔹 MOSTRAR EN UNITY
+  // 🔹 MOSTRAR EN UNITY (USANDO API)
   const showInUnity = async (url: string) => {
     setSending(true);
 
-    const { error } = await supabase
-      .from("meeting_state")
-      .update({ current_image_url: url })
-      .eq("id", 1);
+    const res = await fetch("/api/meeting-state", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        currentImageUrl: url,
+      }),
+    });
 
-    if (error) {
-      console.error(error);
-      alert("Error enviando a Unity");
+    if (!res.ok) {
+      console.error(await res.text());
+      alert("Error enviando imagen a Unity");
     }
 
     setSending(false);
