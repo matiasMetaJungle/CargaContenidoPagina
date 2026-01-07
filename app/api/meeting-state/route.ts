@@ -5,7 +5,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// 1. Definimos las cabeceras para reutilizarlas
+// 1. Definimos las cabeceras para reutilizarlas (ESTO ES PARA LOS CORS)
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*", // O "https://reuniontest.vercel.app" para más seguridad
   "Access-Control-Allow-Methods": "GET, PATCH, OPTIONS",
