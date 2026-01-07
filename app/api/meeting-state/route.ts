@@ -1,5 +1,3 @@
-export const runtime = "nodejs";
-
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -10,34 +8,33 @@ const supabase = createClient(
 export async function GET() {
   const { data, error } = await supabase
     .from("meeting_state")
-    .select("current_image_url")
+    .select("media_type, media_url")
     .eq("id", 1)
     .single();
 
   if (error) {
-    return Response.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return Response.json({ error: error.message }, { status: 500 });
   }
 
   return Response.json(data);
 }
 
 export async function PATCH(req: Request) {
-  const { currentImageUrl } = await req.json();
+  const body = await req.json();
+
+  const { mediaType, mediaUrl } = body;
 
   const { error } = await supabase
     .from("meeting_state")
-    .update({ current_image_url: currentImageUrl })
+    .update({
+      media_type: mediaType,
+      media_url: mediaUrl,
+    })
     .eq("id", 1);
 
   if (error) {
-    return Response.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return Response.json({ error: error.message }, { status: 500 });
   }
 
-  return Response.json({ ok: true });
+  return Response.json({ patched: true });
 }
