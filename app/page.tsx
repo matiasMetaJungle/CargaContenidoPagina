@@ -61,16 +61,17 @@ export default function Page() {
   };
 
   // Esta función centraliza el envío a Unity vía la API route.ts
+  // En page.tsx, cambia la función showInUnity:
   const showInUnity = async (url: string, type: "image" | "model" | "video") => {
     setSending(true);
     try {
       await fetch("/api/meeting-state", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mediaType: type, mediaUrl: url }),
+        body: JSON.stringify({ type, url }), // Enviamos 'type' para que la API sepa qué columna actualizar
       });
     } catch (error) {
-      console.error("Error enviando a Unity:", error);
+      console.error(error);
     }
     setSending(false);
   };
