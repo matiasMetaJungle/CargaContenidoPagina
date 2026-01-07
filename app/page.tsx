@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-// Importamos dynamic de Next.js para carga segura en cliente
 import dynamic from "next/dynamic";
 
 type MediaItem = {
@@ -15,14 +14,14 @@ const BUCKET = "meeting-media";
 export default function Page() {
   const [images, setImages] = useState<MediaItem[]>([]);
   const [models, setModels] = useState<MediaItem[]>([]);
+  const [videoUrl, setVideoUrl] = useState(""); // Nuevo: Estado para la URL de video externa
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    // Marcamos que ya estamos en el cliente
     setIsClient(true);
-    // Importamos la librería solo aquí para evitar errores de SSR
+    // Importamos la librería solo en cliente para evitar errores de SSR
     import("@google/model-viewer");
     
     fetchImages();
@@ -61,13 +60,18 @@ export default function Page() {
     fetchModels();
   };
 
-  const showInUnity = async (url: string, type: "image" | "model") => {
+  // Esta función centraliza el envío a Unity vía la API route.ts
+  const showInUnity = async (url: string, type: "image" | "model" | "video") => {
     setSending(true);
-    await fetch("/api/meeting-state", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mediaType: type, mediaUrl: url }),
-    });
+    try {
+      await fetch("/api/meeting-state", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mediaType: type, mediaUrl: url }),
+      });
+    } catch (error) {
+      console.error("Error enviando a Unity:", error);
+    }
     setSending(false);
   };
 
@@ -81,12 +85,38 @@ export default function Page() {
     <main style={styles.main}>
       <h1 style={styles.title}>Panel de Contenido – Reunión</h1>
 
+      {/* SECCIÓN DE SUBIDA Y VIDEOS EXTERNOS */}
       <section style={styles.section}>
         <UploadBlock title="Subir imagen" accept="image/*" onUpload={uploadImage} uploading={uploading} />
         <UploadBlock title="Subir modelo 3D (.glb)" accept=".glb" onUpload={uploadModel} uploading={uploading} />
+        
+        {/* Nueva sección para Video Externo (Google Cloud, etc.) */}
+        <div style={styles.upload}>
+          <h3 style={{ marginBottom: 10, fontSize: 16 }}>Video Externo (GCP/URL)</h3>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <input 
+              type="text" 
+              placeholder="Pegar URL del video..." 
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              style={styles.input}
+            />
+            <Primary 
+              onClick={() => {
+                if(videoUrl) {
+                  showInUnity(videoUrl, "video");
+                  setVideoUrl(""); // Limpiar después de enviar
+                }
+              }} 
+              disabled={sending || !videoUrl}
+            >
+              Abrir Video
+            </Primary>
+          </div>
+        </div>
       </section>
 
-      {sending && <p style={{ color: "#38bdf8", marginBottom: 16 }}>Enviando a Unity...</p>}
+      {sending && <p style={{ color: "#38bdf8", marginBottom: 16 }}>Enviando instrucción a Unity...</p>}
 
       <h2 style={styles.subtitle}>Imágenes</h2>
       <Grid>
@@ -106,7 +136,6 @@ export default function Page() {
         {models.map((model) => (
           <Card key={model.name}>
             <div style={styles.modelWrapper}>
-              {/* Solo renderizamos el model-viewer si estamos en el cliente */}
               {isClient ? (
                 React.createElement("model-viewer", {
                   src: model.url,
@@ -132,7 +161,7 @@ export default function Page() {
   );
 }
 
-// --- Componentes UI y Estilos (Igual que antes) ---
+// --- Componentes UI ---
 const UploadBlock = ({ title, accept, onUpload, uploading }: any) => (
   <div style={styles.upload}>
     <h3 style={{ marginBottom: 10, fontSize: 16 }}>{title}</h3>
@@ -146,12 +175,14 @@ const ActionButtons = ({ children }: any) => <div style={{ display: "flex", gap:
 const Primary = ({ children, ...props }: any) => <button {...props} style={styles.primary}>{children}</button>;
 const Danger = ({ children, ...props }: any) => <button {...props} style={styles.danger}>{children}</button>;
 
+// --- Estilos Actualizados ---
 const styles: any = {
   main: { padding: 24, maxWidth: 1200, margin: "0 auto", color: "#e5e7eb", fontFamily: "sans-serif" },
   title: { fontSize: 28, marginBottom: 20, fontWeight: "bold" },
   subtitle: { marginTop: 40, marginBottom: 16, fontSize: 20, borderBottom: "1px solid #1e293b", paddingBottom: 8 },
   section: { display: "flex", gap: 24, marginBottom: 32, flexWrap: "wrap" },
   upload: { padding: 20, borderRadius: 12, background: "#0f172a", border: "1px solid #1e293b", flex: 1, minWidth: "300px" },
+  input: { flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid #1e293b", background: "#020617", color: "white", outline: "none" },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 },
   card: { background: "#020617", border: "1px solid #1e293b", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column" },
   image: { width: "100%", height: 160, objectFit: "cover", borderRadius: 8 },
